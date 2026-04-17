@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lernkontrolle – WPU 3D-Druck</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0e0f14;--surface:#15171f;--card:#1c1f2b;--card2:#212532;
+  --border:#2c3042;--border2:#3a3f55;
+  --accent:#6c8fff;--accent-d:#4f6fe8;
+  --orange:#f97316;--orange-l:rgba(249,115,22,.1);
+  --ok:#22c55e;--ok-l:rgba(34,197,94,.13);
+  --flag:#eab308;--flag-l:rgba(234,179,8,.13);
+  --err:#ef4444;--text:#e8eaf4;--muted:#7a7f9a;--radius:12px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Instrument Sans',sans-serif;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;
+  background-image:linear-gradient(rgba(108,143,255,.025) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(108,143,255,.025) 1px,transparent 1px);
+  background-size:32px 32px;pointer-events:none;z-index:0}
+.screen{display:none;position:relative;z-index:1}
+.screen.active{display:block}
+
+/* ── LOGIN ── */
+#screen-login{min-height:100vh;display:none;align-items:center;justify-content:center;padding:24px}
+#screen-login.active{display:flex}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:52px 48px;width:100%;max-width:480px;box-shadow:0 8px 48px rgba(0,0,0,.5);animation:rise .5s ease}
+@keyframes rise{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--orange);margin-bottom:20px}
+.eyebrow::before{content:'';width:20px;height:2px;background:var(--orange);border-radius:99px}
+.login-card h1{font-family:'Syne',sans-serif;font-size:32px;font-weight:800;line-height:1.15;margin-bottom:8px}
+.login-card .sub{color:var(--muted);font-size:15px;margin-bottom:36px;line-height:1.6}
+.fields{display:flex;flex-direction:column;gap:16px;margin-bottom:28px}
+.field{display:flex;flex-direction:column;gap:7px}
+.field label{font-size:13px;font-weight:600;color:var(--text)}
+.field input,.field select{background:var(--card);border:1.5px solid var(--border);border-radius:9px;padding:12px 14px;font-family:'Instrument Sans',sans-serif;font-size:15px;color:var(--text);transition:border-color .18s,box-shadow .18s;appearance:none}
+.field input:focus,.field select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(108,143,255,.15)}
+.field input::placeholder{color:var(--muted)}
+.field select option{background:var(--card2);color:var(--text)}
+.info-box{background:var(--orange-l);border:1px solid rgba(249,115,22,.25);border-radius:9px;padding:13px 15px;font-size:13px;color:#fdba74;line-height:1.55;margin-bottom:24px}
+.info-box strong{color:var(--orange)}
+.btn-start{width:100%;padding:14px;background:var(--accent);color:#fff;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;border:none;border-radius:10px;cursor:pointer;transition:background .18s,transform .12s;letter-spacing:.5px}
+.btn-start:hover{background:var(--accent-d);transform:translateY(-1px)}
+
+/* ── EXAM CHROME ── */
+#screen-exam{min-height:100vh;display:none;flex-direction:column}
+#screen-exam.active{display:flex}
+.topbar{position:sticky;top:0;z-index:100;background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;display:flex;align-items:center;gap:14px;height:56px;box-shadow:0 2px 20px rgba(0,0,0,.4)}
+.tb-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;white-space:nowrap}
+.tb-student{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tb-space{flex:1}
+.tb-timer{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;background:var(--card);border:1px solid var(--border);border-radius:7px;padding:5px 12px;white-space:nowrap;letter-spacing:.5px}
+
+/* ── NAV STRIP ── */
+.nav-strip{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.nav-legend{display:flex;align-items:center;gap:12px;margin-left:auto;flex-shrink:0}
+.leg{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)}
+.leg-sq{width:11px;height:11px;border-radius:3px;flex-shrink:0}
+.leg-sq.lo{background:var(--card2);border:1.5px solid var(--border2)}
+.leg-sq.la{background:var(--ok)}
+.leg-sq.lf{background:var(--flag)}
+
+/* dot states */
+.ndot{width:32px;height:32px;min-width:32px;display:flex;align-items:center;justify-content:center;border-radius:7px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;border:1.5px solid var(--border);background:var(--card2);color:var(--muted);cursor:pointer;transition:all .15s;position:relative;user-select:none}
+.ndot:hover{border-color:var(--accent);color:var(--accent)}
+.ndot.answered{background:var(--ok-l);border-color:var(--ok);color:var(--ok)}
+.ndot.flagged{background:var(--flag-l)!important;border-color:var(--flag)!important;color:var(--flag)!important}
+.ndot.current{box-shadow:0 0 0 2.5px white}
+.ndot.flagged::after{content:'⚑';position:absolute;top:-6px;right:-5px;font-size:8px;color:var(--flag);line-height:1}
+
+/* ── EXAM BODY ── */
+.exam-body{flex:1;padding:28px 20px 40px;max-width:760px;margin:0 auto;width:100%}
+.q-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:30px;margin-bottom:20px;animation:qfade .22s ease;box-shadow:0 4px 24px rgba(0,0,0,.25)}
+@keyframes qfade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.q-meta{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+.q-num{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--orange);background:var(--orange-l);border:1px solid rgba(249,115,22,.25);border-radius:6px;padding:3px 10px}
+.q-badge{font-size:11px;color:var(--muted);background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:3px 10px}
+.q-mat{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;border-radius:6px;padding:3px 10px}
+.q-text{font-size:17px;font-weight:500;line-height:1.6;margin-bottom:22px}
+.flag-btn{margin-left:auto;display:flex;align-items:center;gap:5px;padding:4px 11px;border-radius:6px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;border:1.5px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap}
+.flag-btn:hover{border-color:var(--flag);color:var(--flag)}
+.flag-btn.active{background:var(--flag-l);border-color:var(--flag);color:var(--flag)}
+
+/* ── ANSWER TYPES ── */
+.options{display:flex;flex-direction:column;gap:9px}
+.opt{display:flex;align-items:center;gap:12px;background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:13px 15px;cursor:pointer;font-size:15px;color:var(--text);font-family:inherit;width:100%;text-align:left;transition:border-color .15s,background .15s,transform .1s}
+.opt:hover{border-color:var(--accent);background:rgba(108,143,255,.07);transform:translateX(2px)}
+.opt.selected{border-color:var(--accent);background:rgba(108,143,255,.12)}
+.opt-key{min-width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;border:1.5px solid var(--border2);font-family:'Syne',sans-serif;font-size:12px;font-weight:700;background:var(--card2);transition:all .15s;flex-shrink:0}
+.opt.selected .opt-key{background:var(--accent);border-color:var(--accent);color:#fff}
+.multi-hint{font-size:12px;color:var(--muted);font-style:italic;margin-bottom:11px}
+.checks{display:flex;flex-direction:column;gap:9px}
+.chk{display:flex;align-items:center;gap:12px;background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:13px 15px;cursor:pointer;font-size:15px;user-select:none;transition:border-color .15s,background .15s}
+.chk:hover{border-color:var(--accent);background:rgba(108,143,255,.07)}
+.chk.checked{border-color:var(--accent);background:rgba(108,143,255,.12)}
+.chk-box{min-width:22px;height:22px;border:1.5px solid var(--border2);border-radius:5px;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;transition:all .15s;flex-shrink:0}
+.chk.checked .chk-box{background:var(--accent);border-color:var(--accent);color:#fff}
+.match-table{display:flex;flex-direction:column;gap:9px}
+.match-row{display:grid;grid-template-columns:1fr 22px 1fr;align-items:center;gap:8px}
+.match-term{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;font-weight:500}
+.match-arr{text-align:center;color:var(--muted)}
+.match-sel{background:var(--card);border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;color:var(--text);font-family:inherit;cursor:pointer;width:100%;transition:border-color .15s;appearance:none}
+.match-sel:focus{outline:none;border-color:var(--accent)}
+.match-sel.filled{border-color:var(--accent);background:rgba(108,143,255,.07)}
+.match-sel option{background:var(--card2);color:var(--text)}
+.open-area{width:100%;min-height:100px;resize:vertical;background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:13px 14px;color:var(--text);font-family:inherit;font-size:15px;line-height:1.55;transition:border-color .15s}
+.open-area:focus{outline:none;border-color:var(--accent)}
+.open-area.filled{border-color:var(--accent)}
+
+/* ── NAV BUTTONS ── */
+.bottom-nav{display:flex;justify-content:space-between;align-items:center;padding:14px 0;gap:10px}
+.btn-n{display:flex;align-items:center;gap:7px;padding:11px 20px;border-radius:9px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;border:1.5px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;transition:all .15s;letter-spacing:.3px}
+.btn-n:hover{border-color:var(--accent);color:var(--accent)}
+.btn-n:disabled{opacity:.28;cursor:not-allowed;pointer-events:none}
+.btn-n.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-n.primary:hover{background:var(--accent-d)}
+.btn-n.submit-btn{background:var(--orange);color:#fff;border-color:var(--orange);margin:0 auto;display:block}
+.btn-n.submit-btn:hover{background:#e06010}
+.nav-mid{font-size:13px;color:var(--muted);text-align:center;line-height:1.4}
+.nav-mid strong{color:var(--text)}
+
+/* ── MODAL ── */
+.overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:24px}
+.overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:38px 34px;max-width:440px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.6);animation:rise .3s ease}
+.modal h2{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin-bottom:10px}
+.modal p{color:var(--muted);font-size:15px;line-height:1.6;margin-bottom:6px}
+.modal-stats{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin:18px 0;display:flex;flex-direction:column;gap:9px}
+.mstat{display:flex;justify-content:space-between;align-items:center;font-size:14px}
+.mstat .lbl{color:var(--muted)}
+.mstat .val{font-weight:600}
+.mstat .val.bad{color:var(--err)}
+.modal-btns{display:flex;gap:10px;margin-top:8px}
+.mbtn{flex:1;padding:12px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;border-radius:9px;cursor:pointer;transition:all .15s}
+.mbtn.cancel{background:var(--card);border:1.5px solid var(--border);color:var(--text)}
+.mbtn.cancel:hover{border-color:var(--accent)}
+.mbtn.go{background:var(--orange);border:1.5px solid var(--orange);color:#fff}
+.mbtn.go:hover{background:#e06010}
+
+/* ── DONE ── */
+#screen-done{min-height:100vh;display:none;align-items:center;justify-content:center;padding:24px}
+#screen-done.active{display:flex}
+.done-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:52px 44px;max-width:500px;width:100%;text-align:center;box-shadow:0 8px 48px rgba(0,0,0,.5);animation:rise .5s ease}
+.done-icon{font-size:52px;margin-bottom:20px;display:block}
+.done-card h2{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;margin-bottom:10px}
+.done-card p{color:var(--muted);font-size:15px;line-height:1.65;margin-bottom:6px}
+.done-file{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 16px;margin:20px 0;color:var(--orange);word-break:break-all}
+
+/* ── EDITOR SCREEN ── */
+#screen-editor{min-height:100vh;display:none;flex-direction:column}
+#screen-editor.active{display:flex}
+.editor-topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;box-shadow:0 2px 20px rgba(0,0,0,.4)}
+.ed-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:800}
+.ed-title span{color:var(--orange)}
+.ed-space{flex:1}
+.ed-btn{padding:8px 16px;border-radius:8px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;border:1.5px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;transition:all .15s}
+.ed-btn:hover{border-color:var(--accent);color:var(--accent)}
+.ed-btn.danger{border-color:rgba(239,68,68,.4);color:var(--err)}
+.ed-btn.danger:hover{background:rgba(239,68,68,.1)}
+.editor-body{flex:1;padding:28px 24px 60px;max-width:900px;margin:0 auto;width:100%}
+
+/* filter bar */
+.ed-filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px;align-items:center}
+.ed-filter-btn{padding:6px 14px;border-radius:7px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;border:1.5px solid var(--border);background:var(--card2);color:var(--muted);cursor:pointer;transition:all .15s}
+.ed-filter-btn:hover{border-color:var(--accent);color:var(--accent)}
+.ed-filter-btn.active{background:rgba(108,143,255,.12);border-color:var(--accent);color:var(--accent)}
+.ed-count{font-size:13px;color:var(--muted);margin-left:auto}
+
+/* question list */
+.ed-q-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden;transition:border-color .15s}
+.ed-q-item:hover{border-color:var(--border2)}
+.ed-q-header{display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer;user-select:none}
+.ed-q-num{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--muted);min-width:22px}
+.ed-q-mat{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;border-radius:5px;padding:2px 7px;flex-shrink:0}
+.ed-q-level{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;border-radius:5px;padding:2px 7px;flex-shrink:0}
+.level-easy{color:#22c55e;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25)}
+.level-medium{color:#f97316;background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.25)}
+.level-hard{color:#c084fc;background:rgba(192,132,252,.1);border:1px solid rgba(192,132,252,.25)}
+.ed-q-text{font-size:14px;color:var(--text);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ed-q-type{font-size:11px;color:var(--muted);flex-shrink:0}
+.ed-q-toggle{color:var(--muted);font-size:12px;margin-left:4px;transition:transform .2s;flex-shrink:0}
+.ed-q-item.open .ed-q-toggle{transform:rotate(180deg)}
+
+.ed-q-body{display:none;padding:0 16px 20px;border-top:1px solid var(--border)}
+.ed-q-item.open .ed-q-body{display:block}
+.ed-form{display:flex;flex-direction:column;gap:12px;padding-top:16px}
+.ed-row{display:flex;flex-direction:column;gap:5px}
+.ed-row label{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.5px;text-transform:uppercase}
+.ed-input,.ed-select,.ed-textarea{background:var(--card);border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-family:'Instrument Sans',sans-serif;font-size:14px;color:var(--text);transition:border-color .15s;appearance:none;width:100%}
+.ed-input:focus,.ed-select:focus,.ed-textarea:focus{outline:none;border-color:var(--accent)}
+.ed-textarea{min-height:70px;resize:vertical;line-height:1.5}
+.ed-select option{background:var(--card2)}
+.ed-opts-list{display:flex;flex-direction:column;gap:7px}
+.ed-opt-row{display:flex;gap:8px;align-items:center}
+.ed-opt-row input{flex:1}
+.ed-opt-row .opt-label{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;min-width:20px;color:var(--muted)}
+.ed-opt-row .rm-btn{padding:5px 9px;border-radius:6px;font-size:12px;border:1px solid var(--border);background:var(--card2);color:var(--err);cursor:pointer}
+.ed-opt-row .rm-btn:hover{background:rgba(239,68,68,.1)}
+.ed-pairs-list{display:flex;flex-direction:column;gap:7px}
+.ed-pair-row{display:grid;grid-template-columns:1fr 1fr 28px;gap:8px;align-items:center}
+.ed-action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.ed-add-btn{padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--card2);color:var(--muted);cursor:pointer;transition:all .15s}
+.ed-add-btn:hover{border-color:var(--ok);color:var(--ok)}
+.ed-save-btn{padding:8px 18px;border-radius:7px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;background:var(--accent);color:#fff;border:none;cursor:pointer;transition:background .15s}
+.ed-save-btn:hover{background:var(--accent-d)}
+.ed-del-btn{padding:8px 14px;border-radius:7px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;background:transparent;color:var(--err);border:1.5px solid rgba(239,68,68,.3);cursor:pointer;transition:all .15s}
+.ed-del-btn:hover{background:rgba(239,68,68,.1)}
+.ed-saved-msg{font-size:12px;color:var(--ok);display:none}
+
+/* editor login */
+.ed-login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.ed-login-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:44px 40px;max-width:400px;width:100%;box-shadow:0 8px 48px rgba(0,0,0,.5);animation:rise .4s ease;text-align:center}
+.ed-login-card h2{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin-bottom:8px}
+.ed-login-card p{color:var(--muted);font-size:14px;margin-bottom:24px}
+.ed-pw-row{display:flex;gap:8px}
+.ed-pw-inp{flex:1;background:var(--card);border:1.5px solid var(--border);border-radius:8px;padding:11px 13px;font-family:'Instrument Sans',sans-serif;font-size:15px;color:var(--text);transition:border-color .15s}
+.ed-pw-inp:focus{outline:none;border-color:var(--accent)}
+.ed-pw-btn{padding:11px 18px;border-radius:8px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;background:var(--accent);color:#fff;border:none;cursor:pointer;transition:background .15s}
+.ed-pw-btn:hover{background:var(--accent-d)}
+.ed-pw-err{color:var(--err);font-size:13px;margin-top:10px;display:none}
+
+/* responsive */
+@media(max-width:600px){
+  .login-card,.ed-login-card{padding:36px 22px}
+  .q-card{padding:20px 16px}
+  .match-row{grid-template-columns:1fr}
+  .match-arr{display:none}
+  .nav-legend{display:none}
+  .ed-pair-row{grid-template-columns:1fr 1fr 24px}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN ══ -->
+<div id="screen-login" class="screen active">
+  <div class="login-card">
+    <div class="eyebrow">WPU · 3D-Druck</div>
+    <h1>Lernkontrolle<br>Filamente</h1>
+    <p class="sub">Gib deinen Namen und deine Klassenstufe ein. Die Fragen werden automatisch angepasst.</p>
+    <div class="fields">
+      <div class="field"><label for="inp-vn">Vorname</label><input type="text" id="inp-vn" placeholder="z. B. Sebastian" autocomplete="off"></div>
+      <div class="field"><label for="inp-nn">Nachname</label><input type="text" id="inp-nn" placeholder="z. B. Beller" autocomplete="off"></div>
+      <div class="field">
+        <label for="inp-kl">Klassenstufe</label>
+        <select id="inp-kl">
+          <option value="">– bitte wählen –</option>
+          <option value="8">8</option>
+          <option value="9">9</option>
+          <option value="10">10</option>
+        </select>
+      </div>
+    </div>
+    <div class="info-box"><strong>Hinweis:</strong> 20 zufällig ausgewählte Fragen passend zu deiner Klassenstufe. Du kannst jederzeit vor- und zurücknavigieren. Am Ende wird eine Datei zum Abgeben erstellt.</div>
+    <button class="btn-start" onclick="startExam()">Prüfung starten →</button>
+    <div style="text-align:center;margin-top:20px">
+      <button onclick="openEditorLogin()" style="background:none;border:none;font-size:12px;color:var(--muted);cursor:pointer;text-decoration:underline">Lehrkraft-Editor</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ EXAM ══ -->
+<div id="screen-exam" class="screen">
+  <div class="topbar">
+    <div class="tb-title">WPU 3D-Druck</div>
+    <div class="tb-student" id="tb-student"></div>
+    <div class="tb-space"></div>
+    <div class="tb-timer" id="tb-timer">00:00</div>
+  </div>
+  <div class="nav-strip" id="nav-strip">
+    <div class="nav-legend">
+      <div class="leg"><div class="leg-sq lo"></div>Offen</div>
+      <div class="leg"><div class="leg-sq la"></div>Beantwortet</div>
+      <div class="leg"><div class="leg-sq lf"></div>Markiert</div>
+    </div>
+  </div>
+  <div class="exam-body">
+    <div id="q-area"></div>
+    <div class="bottom-nav">
+      <button class="btn-n" id="btn-prev" onclick="navigate(-1)">← Zurück</button>
+      <div class="nav-mid"><strong id="ans-count">0</strong> / 20 beantwortet</div>
+      <button class="btn-n primary" id="btn-next" onclick="navigate(1)">Weiter →</button>
+    </div>
+    <div style="text-align:center;padding-bottom:16px">
+      <button class="btn-n submit-btn" onclick="openModal()">✓ Prüfung abgeben</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL ══ -->
+<div class="overlay" id="modal">
+  <div class="modal">
+    <h2>Prüfung abgeben?</h2>
+    <p>Überprüfe, ob du alle Fragen beantwortet hast.</p>
+    <div class="modal-stats" id="modal-stats"></div>
+    <p>Es wird eine <strong>.json-Datei</strong> heruntergeladen – diese gibst du deiner Lehrkraft ab.</p>
+    <div class="modal-btns">
+      <button class="mbtn cancel" onclick="closeModal()">Zurück</button>
+      <button class="mbtn go" onclick="submitExam()">Jetzt abgeben</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ DONE ══ -->
+<div id="screen-done" class="screen">
+  <div class="done-card">
+    <span class="done-icon">📄</span>
+    <h2>Abgegeben!</h2>
+    <p>Deine Antworten wurden gespeichert. Bitte gib die Datei deiner Lehrkraft.</p>
+    <div class="done-file" id="done-file"></div>
+    <p style="font-size:13px">Du kannst dieses Fenster jetzt schließen.</p>
+  </div>
+</div>
+
+<!-- ══ EDITOR LOGIN ══ -->
+<div id="screen-ed-login" class="screen">
+  <div class="ed-login">
+    <div class="ed-login-card">
+      <span style="font-size:36px;display:block;margin-bottom:16px">🔒</span>
+      <h2>Lehrkraft-Editor</h2>
+      <p>Bitte Passwort eingeben um die Fragendatenbank zu bearbeiten.</p>
+      <div class="ed-pw-row">
+        <input class="ed-pw-inp" type="password" id="ed-pw-inp" placeholder="Passwort" onkeydown="if(event.key==='Enter')checkEditorPw()">
+        <button class="ed-pw-btn" onclick="checkEditorPw()">→</button>
+      </div>
+      <div class="ed-pw-err" id="ed-pw-err">Falsches Passwort.</div>
+      <button onclick="goBackToLogin()" style="background:none;border:none;font-size:12px;color:var(--muted);cursor:pointer;margin-top:20px;text-decoration:underline">← Zurück</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ EDITOR ══ -->
+<div id="screen-editor" class="screen">
+  <div class="editor-topbar">
+    <div class="ed-title">Fragen<span>Editor</span></div>
+    <div class="ed-space"></div>
+    <button class="ed-btn" onclick="addNewQuestion()">+ Neue Frage</button>
+    <button class="ed-btn" onclick="exportPool()">↓ Exportieren</button>
+    <button class="ed-btn danger" onclick="goBackToLogin()">← Beenden</button>
+  </div>
+  <div class="editor-body">
+    <div class="ed-filters" id="ed-filters"></div>
+    <div id="ed-q-list"></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+// MATERIAL STYLES
+// ══════════════════════════════════════════════════
+const MAT={
+  PLA:     {c:'#4ade80',bg:'rgba(74,222,128,.1)', bd:'rgba(74,222,128,.3)'},
+  PETG:    {c:'#60a5fa',bg:'rgba(96,165,250,.1)', bd:'rgba(96,165,250,.3)'},
+  'ABS/ASA':{c:'#fb923c',bg:'rgba(251,146,60,.1)',bd:'rgba(251,146,60,.3)'},
+  PC:      {c:'#c084fc',bg:'rgba(192,132,252,.1)',bd:'rgba(192,132,252,.3)'},
+  PET:     {c:'#34d399',bg:'rgba(52,211,153,.1)', bd:'rgba(52,211,153,.3)'},
+  TPU:     {c:'#f472b6',bg:'rgba(244,114,182,.1)',bd:'rgba(244,114,182,.3)'},
+};
+
+// ══════════════════════════════════════════════════
+// LEVEL MIX  (8=80/20/0  9=40/50/10  10=20/40/40)
+// ══════════════════════════════════════════════════
+const LEVEL_MIX={
+  '8': {easy:16,medium:4, hard:0},
+  '9': {easy:8, medium:10,hard:2},
+  '10':{easy:4, medium:8, hard:8},
+};
+
+// ══════════════════════════════════════════════════
+// QUESTION POOL
+// ══════════════════════════════════════════════════
+let POOL=[
+  // ── PLA EASY ──
+  {mat:'PLA',cat:'Kunststoffart',level:'easy',type:'single',q:'Zu welcher Kunststoffgruppe gehört PLA?',opts:['Duroplast','Thermoplast','Elastomer','Verbundwerkstoff'],correct:1},
+  {mat:'PLA',cat:'Vollständiger Name',level:'easy',type:'single',q:'Wie lautet der ausgeschriebene Name von PLA?',opts:['Polyethylen-Lactat-Acryl','Polylactid / Polymilchsäure','Polyester-Lithium-Acrylat','Plastik-Laminier-Additiv'],correct:1},
+  {mat:'PLA',cat:'Rohstoff',level:'easy',type:'single',q:'PLA wird aus pflanzlichen Rohstoffen hergestellt. Welche Quelle ist typisch?',opts:['Erdöl','Maisstärke oder Zuckerrohr','Glasfaser','Aluminium'],correct:1},
+  {mat:'PLA',cat:'Drucktemperatur',level:'easy',type:'single',q:'In welchem typischen Temperaturbereich wird PLA gedruckt?',opts:['100–140 °C','190–220 °C','260–290 °C','310–350 °C'],correct:1},
+  {mat:'PLA',cat:'Anwendung',level:'easy',type:'single',q:'Für welche Anwendung eignet sich PLA besonders gut?',opts:['Motorenteile bei 120 °C','Schulprojekte und Dekomodelle','Chemikalienbeständige Behälter','Flexible Greifer'],correct:1},
+  // ── PLA MEDIUM ──
+  {mat:'PLA',cat:'Eigenschaften',level:'medium',type:'multi',q:'Welche Eigenschaften treffen auf PLA zu?',opts:['Biologisch abbaubar','Sehr hohe Hitzebeständigkeit (>120 °C)','Spröde bei Schlagbelastung','Gut schleif- und nachbearbeitbar','Hohe chemische Beständigkeit'],correct:[0,2,3]},
+  {mat:'PLA',cat:'Druckeigenschaften',level:'medium',type:'multi',q:'Welche Aussagen zur Verarbeitung von PLA beim FDM-Druck treffen zu?',opts:['Kein beheiztes Druckbett erforderlich','Düsentemperatur ca. 190–220 °C','Starkes Warping beim Abkühlen','Einsteigerfreundlich, geringes Stringing','Benötigt geschlossene Druckkammer'],correct:[0,1,3]},
+  {mat:'PLA',cat:'Vor- & Nachteile',level:'medium',type:'match',q:'Ordne jeder Aussage zu PLA die richtige Bewertung zu:',pairs:[{term:'Einfaches Drucken, kein Warping',answer:'Vorteil'},{term:'Geringe Wärmeformbeständigkeit (~60 °C)',answer:'Nachteil'},{term:'Aus nachwachsenden Rohstoffen',answer:'Vorteil'},{term:'Spröde bei Schlag- und Biegebelastung',answer:'Nachteil'}],choices:['Vorteil','Nachteil']},
+  // ── PLA HARD ──
+  {mat:'PLA',cat:'Analyse',level:'hard',type:'open',q:'Ein Schüler möchte eine Halterung am Heizkörper (~65 °C) aus PLA drucken. Erkläre das Problem und schlage ein besseres Material vor.',sampleAnswer:'PLA verformt sich bereits ab ~55–65 °C. Die Halterung würde dauerhaft weich werden. Besser: PETG (bis ~80 °C), ABS (bis ~95 °C) oder PC (bis ~130 °C).'},
+  {mat:'PLA',cat:'Vergleich',level:'hard',type:'single',q:'Welcher Aussage stimmt man beim Vergleich PLA vs. ABS zu?',opts:['ABS ist biologisch abbaubar, PLA nicht','PLA hat eine höhere Wärmeformbeständigkeit','ABS ist für Außenteile mit UV besser als PLA','PLA benötigt eine beheizte Einhausung'],correct:2},
+
+  // ── PETG EASY ──
+  {mat:'PETG',cat:'Kunststoffart',level:'easy',type:'single',q:'PETG gehört zu welcher Kunststoffkategorie?',opts:['Elastomer','Duroplast','Thermoplast','Biopolymer'],correct:2},
+  {mat:'PETG',cat:'Vollständiger Name',level:'easy',type:'single',q:'Was bedeutet das „G" in PETG?',opts:['Gehärtet','Glycol-modifiziert','Glasfaser-verstärkt','Gebunden'],correct:1},
+  {mat:'PETG',cat:'Drucktemperatur',level:'easy',type:'single',q:'In welchem Temperaturbereich wird PETG gedruckt?',opts:['150–175 °C','180–205 °C','230–250 °C','270–300 °C'],correct:2},
+  {mat:'PETG',cat:'Anwendung',level:'easy',type:'single',q:'PETG ist in der Regel lebensmittelecht. Welche Anwendung passt?',opts:['Motorhalterung','Trinkbecher / Lebensmittelbehälter','Hochtemperaturdüse','Gummidichtung'],correct:1},
+  // ── PETG MEDIUM ──
+  {mat:'PETG',cat:'Eigenschaften',level:'medium',type:'multi',q:'Welche Eigenschaften hat PETG?',opts:['In der Regel lebensmittelecht','Gute chemische Beständigkeit','Sehr spröde','Transparente Drucke möglich','Sehr niedrige Drucktemperatur (unter 180 °C)'],correct:[0,1,3]},
+  {mat:'PETG',cat:'Druckprobleme',level:'medium',type:'single',q:'Welches typische Problem tritt beim Drucken von PETG auf?',opts:['Starkes Warping','Stringing (Fadenziehen)','Düsenverstopfung bei jeder Düse','Blasenbildung im ersten Layer'],correct:1},
+  {mat:'PETG',cat:'Anwendungen',level:'medium',type:'multi',q:'Für welche Anwendungen eignet sich PETG besonders?',opts:['Lebensmittelbehälter / Trinkbecher','Dauerhaft >150 °C belastete Bauteile','Mechanisch belastete Teile','Transparente Gehäuse','Gummiartige flexible Teile'],correct:[0,2,3]},
+  // ── PETG HARD ──
+  {mat:'PETG',cat:'Analyse',level:'hard',type:'open',q:'Erkläre warum PETG für mechanisch belastete Alltagsprodukte besser geeignet ist als PLA.',sampleAnswer:'PETG ist zäher und schlagfester (PLA bricht spröde). PETG ist wärmeformbeständiger (~80 vs ~60 °C), feuchtigkeitsbeständiger und lebensmittelecht.'},
+  {mat:'PETG',cat:'Vergleich',level:'hard',type:'single',q:'Bauteil: transparent, lebensmittelecht, bis 75 °C. Welches Material?',opts:['PLA (nur bis ~60 °C)','PETG (transparent, lebensmittelecht, bis ~80 °C)','ABS (opak, nicht lebensmittelecht)','TPU (flexibel, nicht transparent)'],correct:1},
+
+  // ── ABS/ASA EASY ──
+  {mat:'ABS/ASA',cat:'Kunststoffart',level:'easy',type:'single',q:'ABS gehört zu welcher Kunststoffgruppe?',opts:['Duroplast','Elastomer','Thermoplast','Bioplastik'],correct:2},
+  {mat:'ABS/ASA',cat:'Vollständiger Name',level:'easy',type:'single',q:'Wofür steht die Abkürzung ABS?',opts:['Acryl-Butylen-Styrol','Acrylnitril-Butadien-Styrol','Acetat-Butan-Styren','Acrylat-Binder-System'],correct:1},
+  {mat:'ABS/ASA',cat:'Alltagsbezug',level:'easy',type:'single',q:'Welches bekannte Alltagsprodukt besteht aus ABS?',opts:['Getränkeflaschen','LEGO-Steine','Autoreifen','Fensterscheiben'],correct:1},
+  {mat:'ABS/ASA',cat:'ASA-Merkmal',level:'easy',type:'single',q:'Was unterscheidet ASA von ABS beim Außeneinsatz?',opts:['ASA ist billiger','ASA ist UV- und witterungsbeständig','ASA braucht keine Heizkammer','ASA hat niedrigere Drucktemperatur'],correct:1},
+  // ── ABS/ASA MEDIUM ──
+  {mat:'ABS/ASA',cat:'Druckeigenschaften',level:'medium',type:'multi',q:'Welche Besonderheiten gelten beim Drucken von ABS?',opts:['Anfällig für Warping','Druckbett 90–110 °C empfohlen','Einhausung (Enclosure) notwendig','Reizende Dämpfe','Mit Aceton glättbar'],correct:[0,1,2,3,4]},
+  {mat:'ABS/ASA',cat:'Wärmebeständigkeit',level:'medium',type:'single',q:'Bis zu welcher Temperatur ist ABS formbeständig?',opts:['Ca. 60 °C','Ca. 80 °C','Ca. 95–100 °C','Ca. 150 °C'],correct:2},
+  {mat:'ABS/ASA',cat:'Vor- & Nachteile',level:'medium',type:'match',q:'Ordne Vorteil oder Nachteil zu ABS korrekt zu:',pairs:[{term:'Gute Wärmeformbeständigkeit (~95 °C)',answer:'Vorteil'},{term:'Reizende Dämpfe beim Drucken',answer:'Nachteil'},{term:'Nachbearbeitung mit Aceton möglich',answer:'Vorteil'},{term:'Starkes Warping ohne Einhausung',answer:'Nachteil'}],choices:['Vorteil','Nachteil']},
+  // ── ABS/ASA HARD ──
+  {mat:'ABS/ASA',cat:'Analyse',level:'hard',type:'open',q:'In einem offenen Drucker entstehen beim ABS-Druck Risse (Delamination). Erkläre die Ursache und die Lösung.',sampleAnswer:'ABS schrumpft beim Abkühlen. In offenem Drucker kühlen untere Schichten schneller → Zugspannungen → Delamination. Lösung: beheizte Einhausung hält Umgebungstemperatur konstant.'},
+  {mat:'ABS/ASA',cat:'Vergleich',level:'hard',type:'single',q:'Für ein Außenbauteil (UV-exponiert) werden ABS und ASA verglichen. Welche Aussage ist korrekt?',opts:['ABS ist UV-stabiler als ASA','ASA vergilbt schneller als ABS','ASA wurde speziell für Außenanwendungen entwickelt und ist UV-beständiger','Beide gleich geeignet'],correct:2},
+
+  // ── PC EASY ──
+  {mat:'PC',cat:'Vollständiger Name',level:'easy',type:'single',q:'Wie lautet der ausgeschriebene Name des Kunststoffs PC?',opts:['Polycaprolacton','Polycarbonat','Polychlorid','Polycyclen'],correct:1},
+  {mat:'PC',cat:'Kunststoffart',level:'easy',type:'single',q:'Zu welcher Kunststoffgruppe gehört Polycarbonat?',opts:['Elastomer','Duroplast','Thermoplast','Keramik'],correct:2},
+  {mat:'PC',cat:'Alltagsbezug',level:'easy',type:'single',q:'In welchem Alltagsprodukt findet man PC häufig?',opts:['Gummistiefel','Schutzbrillen und CD/DVD','Styropor-Verpackungen','Baumwolltextilien'],correct:1},
+  // ── PC MEDIUM ──
+  {mat:'PC',cat:'Eigenschaften',level:'medium',type:'multi',q:'Welche Eigenschaften hat PC?',opts:['Sehr hohe Schlagzähigkeit','Optisch transparent druckbar','Formbeständig bis ca. 110–135 °C','Leicht zu drucken für Einsteiger','Elektrisch isolierend'],correct:[0,1,2,4]},
+  {mat:'PC',cat:'Drucktemperatur',level:'medium',type:'single',q:'Welche Düsentemperatur ist für PC typisch?',opts:['190–215 °C','220–245 °C','260–300 °C','310–360 °C'],correct:2},
+  {mat:'PC',cat:'Druckanforderungen',level:'medium',type:'single',q:'Was ist beim Drucken von PC unbedingt erforderlich?',opts:['Dual-Extruder','Beheizte Einhausung','Wassergekühlte Düse','Gehärtetes Filament-Coating'],correct:1},
+  {mat:'PC',cat:'Vor- & Nachteile',level:'medium',type:'match',q:'Ordne Vorteil/Nachteil zu PC:',pairs:[{term:'Sehr hohe Schlagzähigkeit',answer:'Vorteil'},{term:'Hohe Drucktemperatur (>260 °C)',answer:'Nachteil'},{term:'Bis ~130 °C formbeständig',answer:'Vorteil'},{term:'Hygroskopisch',answer:'Nachteil'}],choices:['Vorteil','Nachteil']},
+  // ── PC HARD ──
+  {mat:'PC',cat:'Analyse',level:'hard',type:'open',q:'PC ist hygroskopisch. Was bedeutet das und welche Druckprobleme entstehen? Wie verhindert man sie?',sampleAnswer:'Hygroskopisch = zieht Feuchtigkeit aus der Luft. Feuchtes Filament → Blasen, Zischen, poröse Oberflächen, schlechte Haftung. Lösung: vor Druck trocknen (4–8h bei 80 °C), trocken lagern (Vakuumbeutel, Silicagel).'},
+  {mat:'PC',cat:'Vergleich',level:'hard',type:'single',q:'Bauteil: transparent, höchste Schlagzähigkeit, Schutzabdeckung. Welches Material?',opts:['PLA (spröde, bis 60 °C)','PETG (mittlere Zähigkeit, bis 80 °C)','PC (bis 130 °C, höchste Schlagzähigkeit)','TPU (zu flexibel)'],correct:2},
+
+  // ── PET EASY ──
+  {mat:'PET',cat:'Vollständiger Name',level:'easy',type:'single',q:'Wofür steht die Abkürzung PET?',opts:['Polyethylentrimid','Polyethylenterephthalat','Polyester-Ethylen-Tensid','Polytrimethylen-Elastomer'],correct:1},
+  {mat:'PET',cat:'Alltagsbezug',level:'easy',type:'single',q:'Aus welchem Alltagsprodukt kennt man PET am besten?',opts:['Autoreifen','Getränkeflaschen','Computertastatur','Fensterscheiben'],correct:1},
+  {mat:'PET',cat:'Kunststoffart',level:'easy',type:'single',q:'Zu welcher Kunststoffgruppe gehört PET?',opts:['Elastomer','Duroplast','Thermoplast','Keramik'],correct:2},
+  // ── PET MEDIUM ──
+  {mat:'PET',cat:'Eigenschaften',level:'medium',type:'multi',q:'Welche Eigenschaften hat PET als 3D-Druckmaterial?',opts:['Lebensmittelecht bei unbehandelten Oberflächen','Gute chemische Beständigkeit','Sehr geringe Festigkeit','Recycelbar','Hygroskopisch'],correct:[0,1,3,4]},
+  {mat:'PET',cat:'Anwendungen',level:'medium',type:'multi',q:'Wofür eignet sich PET-Filament?',opts:['Lebensmittelbehälter','Technische Bauteile mit mittlerer Belastung','Hochtemperaturbauteile (>150 °C)','Transparente Strukturen und Folien','Elastische Dichtungen'],correct:[0,1,3]},
+  // ── PET HARD ──
+  {mat:'PET',cat:'Analyse',level:'hard',type:'open',q:'Erkläre den Unterschied zwischen PET und PETG beim 3D-Druck und warum PETG in der Praxis häufiger verwendet wird.',sampleAnswer:'Reines PET kristallisiert beim Abkühlen → spröde, schlechte Schichthaftung. PETG ist glycol-modifiziert: unterbindet Kristallisation, Material zäher, transparenter, wesentlich einfacher druckbar.'},
+  {mat:'PET',cat:'Vergleich',level:'hard',type:'single',q:'Warum wird PETG in der Praxis häufiger gedruckt als reines PET?',opts:['PET ist teurer','PET kann nicht mit FDM gedruckt werden','PETG druckt sich durch Glycol-Modifikation deutlich einfacher und zäher','PET hat schlechtere Lebensmittelechtheit'],correct:2},
+
+  // ── TPU EASY ──
+  {mat:'TPU',cat:'Kunststoffart',level:'easy',type:'single',q:'TPU gehört zu welcher Kunststoffgruppe?',opts:['Thermoplast','Duroplast','Thermoplastisches Elastomer','Biopolymer'],correct:2},
+  {mat:'TPU',cat:'Vollständiger Name',level:'easy',type:'single',q:'Wofür steht die Abkürzung TPU?',opts:['Thermoplastisches Polyurethan','Technisches Polymer-Urethan','Transparentes Polyurea','Thermoset-Polyurethan-Uniaxial'],correct:0},
+  {mat:'TPU',cat:'Kerneigenschaft',level:'easy',type:'single',q:'Was ist die wichtigste Besonderheit von TPU?',opts:['Härtestes Material','Flexibel und gummiartig','Höchste Drucktemperatur','Biologisch abbaubar'],correct:1},
+  {mat:'TPU',cat:'Anwendung',level:'easy',type:'single',q:'Welches Alltagsprodukt wird typischerweise aus TPU gedruckt?',opts:['Stahlträger','Handyhülle / Schutzhülle','Glasscheibe','Holzimitat'],correct:1},
+  // ── TPU MEDIUM ──
+  {mat:'TPU',cat:'Eigenschaften',level:'medium',type:'multi',q:'Welche Eigenschaften hat TPU?',opts:['Flexibel und gummiartig','Hohe Abriebfestigkeit','Sehr hart und spröde','Gute Öl- und Kraftstoffbeständigkeit','Schlechte Schichthaftung'],correct:[0,1,3]},
+  {mat:'TPU',cat:'Druckeigenschaften',level:'medium',type:'multi',q:'Welche Besonderheiten gelten beim Drucken mit TPU?',opts:['Direktantrieb (Direct Drive) empfohlen','Langsame Druckgeschwindigkeit (15–30 mm/s)','TPU kann mit FDM nicht gedruckt werden','Bowden-System problematisch wegen Flexibilität','Keine besonderen Anforderungen'],correct:[0,1,3]},
+  {mat:'TPU',cat:'Anwendungen',level:'medium',type:'multi',q:'Für welche Produkte wird TPU eingesetzt?',opts:['Handyhüllen / Schutzhüllen','Schuhsohlen / Einlegesohlen','Steife Maschinenbauteile','Dichtungen und Schwingungsdämpfer','Flexible Schläuche und Griffe'],correct:[0,1,3,4]},
+  // ── TPU HARD ──
+  {mat:'TPU',cat:'Analyse',level:'hard',type:'open',q:'Erkläre warum ein Bowden-System beim Drucken mit TPU problematisch ist und welche Einstellungen angepasst werden müssen.',sampleAnswer:'TPU ist weich und staucht sich im langen PTFE-Schlauch statt vorwärts zu fließen → Unterextrusion, Verstopfungen. Lösung: Direct Drive. Zusätzlich: Druckgeschwindigkeit 15–30 mm/s, Retraction minimieren.'},
+  {mat:'TPU',cat:'Vergleich',level:'hard',type:'single',q:'Schuhsohle: abriebfest, flexibel, ölbeständig. Welches Material?',opts:['PLA – hart aber spröde','ABS – formstabil nicht flexibel','TPU – flexibel, abriebfest, ölbeständig','PC – zu hart für Sohlen'],correct:2},
+
+  // ── VERGLEICH EASY ──
+  {mat:'PLA',cat:'Vergleich',level:'easy',type:'single',q:'Welches Filament hat die niedrigste typische Drucktemperatur?',opts:['PC','ABS','PETG','PLA'],correct:3},
+  {mat:'TPU',cat:'Vergleich',level:'easy',type:'single',q:'Welches Material wählst du für eine flexible Handyhülle?',opts:['PC','PLA','ABS','TPU'],correct:3},
+  {mat:'ABS/ASA',cat:'Vergleich',level:'easy',type:'single',q:'Welches Material ist für UV-exponierten Außeneinsatz am besten?',opts:['PLA','ABS','ASA','PETG'],correct:2},
+  // ── VERGLEICH MEDIUM ──
+  {mat:'PC',cat:'Vergleich',level:'medium',type:'single',q:'Bauteil muss dauerhaft 110 °C aushalten. Welches Material?',opts:['PLA','PETG','PC','TPU'],correct:2},
+  {mat:'ABS/ASA',cat:'Vergleich',level:'medium',type:'match',q:'Ordne jedem Filament sein charakteristisches Merkmal zu:',pairs:[{term:'PLA',answer:'Biologisch abbaubar, spröde'},{term:'TPU',answer:'Flexibel, gummiartig'},{term:'PC',answer:'Höchste Festigkeit & Hitzeresistenz'},{term:'ABS',answer:'Aceton-glättbar, Warping-anfällig'}],choices:['Biologisch abbaubar, spröde','Flexibel, gummiartig','Höchste Festigkeit & Hitzeresistenz','Aceton-glättbar, Warping-anfällig']},
+  {mat:'PETG',cat:'Vergleich',level:'medium',type:'multi',q:'Welche Filamente sind hygroskopisch?',opts:['PLA','PETG','PC','TPU','PET'],correct:[1,2,3,4]},
+  // ── VERGLEICH HARD ──
+  {mat:'PC',cat:'Vergleich',level:'hard',type:'open',q:'Vergleiche PLA, ABS und PC nach Wärmeformbeständigkeit, Druckschwierigkeit und typischen Einsatzgebieten.',sampleAnswer:'PLA: ~60 °C, sehr einfach, Prototypen/Deko. ABS: ~95 °C, mittel schwierig (Warping, Einhausung), technische Teile. PC: ~130 °C, schwierig (260–300 °C, Einhausung, hygroskopisch), Hochleistungsbauteile.'},
+  {mat:'PETG',cat:'Vergleich',level:'hard',type:'single',q:'Medizinstudent braucht Druckmodell: gelegentlich mit Isopropanol desinfiziert, lebensmittelecht. Welches Material?',opts:['PLA (löst sich in Isopropanol auf)','PETG (chemisch beständig, lebensmittelecht)','ABS (nicht lebensmittelecht)','TPU (zu flexibel)'],correct:1},
+];
+
+// ══════════════════════════════════════════════════
+// EDITOR PASSWORD  (hier änderbar)
+// ══════════════════════════════════════════════════
+const EDITOR_PASSWORD = 'Lehrer2024';
+
+// ══════════════════════════════════════════════════
+// EXAM STATE
+// ══════════════════════════════════════════════════
+let student={}, questions=[], curQ=0, answers={}, flags=new Set();
+let qStart=0, examStart=0, timerID=null;
+const TOTAL=20;
+
+function shuffle(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b}
+
+function getYear(kl){const m=kl.match(/^(\d+)/);return m?m[1]:'9'}
+
+function buildQuestionSet(kl){
+  const yr=getYear(kl), mix=LEVEL_MIX[yr]||LEVEL_MIX['9'];
+  const byLevel={easy:[],medium:[],hard:[]};
+  POOL.forEach(q=>{if(byLevel[q.level])byLevel[q.level].push(q)});
+  function pickN(level,n){
+    if(n===0)return[];
+    const pool=shuffle(byLevel[level]);
+    const seen=new Set(), res=[];
+    for(const q of pool){if(!seen.has(q.mat)&&res.length<n){seen.add(q.mat);res.push(q)}}
+    for(const q of pool){if(res.length>=n)break;if(!res.includes(q))res.push(q)}
+    return res.slice(0,n);
+  }
+  return shuffle([...pickN('easy',mix.easy),...pickN('medium',mix.medium),...pickN('hard',mix.hard)]);
+}
+
+function saveAnswer(){
+  const q=questions[curQ],t=Math.round((Date.now()-qStart)/1000);
+  if(q.type==='single'){const s=document.querySelector('.opt.selected');if(s)answers[curQ]={type:'single',value:+s.dataset.idx,timeSpent:t};}
+  else if(q.type==='multi'){const c=[...document.querySelectorAll('.chk.checked')].map(e=>+e.dataset.idx);if(c.length)answers[curQ]={type:'multi',value:c,timeSpent:t};else delete answers[curQ];}
+  else if(q.type==='match'){const v={};let any=false;q.pairs.forEach((_,i)=>{const s=document.getElementById('ms'+i);if(s&&s.value){v[i]=s.value;any=true;}});if(any)answers[curQ]={type:'match',value:v,timeSpent:t};else delete answers[curQ];}
+  else if(q.type==='open'){const ta=document.getElementById('ota');if(ta&&ta.value.trim())answers[curQ]={type:'open',value:ta.value.trim(),timeSpent:t};else delete answers[curQ];}
+}
+function countAns(){return Object.keys(answers).length}
+
+function toggleFlag(i){
+  flags.has(i)?flags.delete(i):flags.add(i);
+  updateStrip();
+  const btn=document.getElementById('flag-btn');
+  if(btn){btn.classList.toggle('active',flags.has(i));btn.textContent=flags.has(i)?'⚑ Markiert':'⚐ Markieren';}
+}
+
+// ── START ──
+function startExam(){
+  const vn=document.getElementById('inp-vn').value.trim();
+  const nn=document.getElementById('inp-nn').value.trim();
+  const kl=document.getElementById('inp-kl').value;
+  if(!vn||!nn){alert('Bitte Vor- und Nachname eingeben.');return}
+  if(!kl){alert('Bitte eine Klassenstufe auswählen.');return}
+  student={vorname:vn,nachname:nn,klasse:kl};
+  questions=buildQuestionSet(kl);
+  document.getElementById('tb-student').textContent=`${vn} ${nn} · Klasse ${kl}`;
+  setScreen('screen-exam');
+  examStart=Date.now();
+  timerID=setInterval(()=>{
+    const s=Math.floor((Date.now()-examStart)/1000);
+    document.getElementById('tb-timer').textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+  },1000);
+  buildStrip(); goTo(0);
+}
+
+function setScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ── NAV STRIP ──
+function buildStrip(){
+  const strip=document.getElementById('nav-strip');
+  [...strip.querySelectorAll('.ndot')].forEach(d=>d.remove());
+  const legend=strip.querySelector('.nav-legend');
+  questions.forEach((_,i)=>{
+    const d=document.createElement('button');
+    d.className='ndot';d.textContent=i+1;d.id='nd'+i;
+    d.onclick=()=>{saveAnswer();goTo(i)};
+    strip.insertBefore(d,legend);
+  });
+}
+function updateStrip(){
+  questions.forEach((_,i)=>{
+    const d=document.getElementById('nd'+i);if(!d)return;
+    let cls='ndot';
+    if(flags.has(i))cls+=' flagged';
+    else if(answers[i]!==undefined)cls+=' answered';
+    if(i===curQ)cls+=' current';
+    d.className=cls;
+  });
+}
+function navigate(dir){saveAnswer();goTo(curQ+dir)}
+function goTo(i){
+  if(i<0||i>=TOTAL)return;
+  curQ=i;qStart=Date.now();
+  render();updateStrip();
+  document.getElementById('btn-prev').disabled=(i===0);
+  document.getElementById('btn-next').disabled=(i===TOTAL-1);
+  document.getElementById('ans-count').textContent=countAns();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ── RENDER ──
+function tLabel(t){return{single:'Einfachauswahl',multi:'Mehrfachauswahl',match:'Zuordnung',open:'Freitext'}[t]||t}
+function render(){
+  const q=questions[curQ],ms=MAT[q.mat]||Object.values(MAT)[0],a=answers[curQ];
+  let h=`<div class="q-card">
+    <div class="q-meta">
+      <span class="q-num">Frage ${curQ+1} / ${TOTAL}</span>
+      <span class="q-badge">${tLabel(q.type)}</span>
+      <span class="q-mat" style="color:${ms.c};background:${ms.bg};border:1px solid ${ms.bd}">${q.mat}</span>
+      <span class="q-badge">${q.cat}</span>
+      <button id="flag-btn" class="flag-btn${flags.has(curQ)?' active':''}" onclick="toggleFlag(${curQ})">${flags.has(curQ)?'⚑ Markiert':'⚐ Markieren'}</button>
+    </div>
+    <div class="q-text">${q.q}</div>`;
+  if(q.type==='single'){
+    h+=`<div class="options">`+q.opts.map((o,i)=>`<button class="opt${a&&a.value===i?' selected':''}" data-idx="${i}" onclick="selSingle(${i})"><span class="opt-key">${'ABCD'[i]}</span>${o}</button>`).join('')+`</div>`;
+  }else if(q.type==='multi'){
+    const sv=a?a.value:[];
+    h+=`<div class="multi-hint">☑ Wähle alle zutreffenden Antworten aus</div><div class="checks">`+q.opts.map((o,i)=>`<div class="chk${sv.includes(i)?' checked':''}" data-idx="${i}" onclick="togChk(this,${i})"><span class="chk-box">${sv.includes(i)?'✓':''}</span>${o}</div>`).join('')+`</div>`;
+  }else if(q.type==='match'){
+    const sv=a?a.value:{},ch=shuffle(q.choices);
+    h+=`<div class="match-table">`+q.pairs.map((p,i)=>`<div class="match-row"><div class="match-term">${p.term}</div><div class="match-arr">→</div><select class="match-sel${sv[i]?' filled':''}" id="ms${i}" onchange="this.classList.toggle('filled',this.value!='');saveMatchLive()"><option value="">– Wählen –</option>${ch.map(c=>`<option value="${c}"${sv[i]===c?' selected':''}>${c}</option>`).join('')}</select></div>`).join('')+`</div>`;
+  }else if(q.type==='open'){
+    const sv=a?a.value:'';
+    h+=`<textarea class="open-area${sv?' filled':''}" id="ota" placeholder="Schreibe deine Antwort hier …" oninput="this.classList.toggle('filled',this.value.trim()!='');saveOpenLive()">${sv}</textarea>`;
+  }
+  h+=`</div>`;
+  document.getElementById('q-area').innerHTML=h;
+}
+function selSingle(i){
+  document.querySelectorAll('.opt').forEach((el,j)=>el.classList.toggle('selected',j===i));
+  answers[curQ]={type:'single',value:i,timeSpent:Math.round((Date.now()-qStart)/1000)};
+  updateStrip();document.getElementById('ans-count').textContent=countAns();
+}
+function togChk(el,i){
+  el.classList.toggle('checked');el.querySelector('.chk-box').textContent=el.classList.contains('checked')?'✓':'';
+  const c=[...document.querySelectorAll('.chk.checked')].map(e=>+e.dataset.idx);
+  if(c.length)answers[curQ]={type:'multi',value:c,timeSpent:Math.round((Date.now()-qStart)/1000)};else delete answers[curQ];
+  updateStrip();document.getElementById('ans-count').textContent=countAns();
+}
+function saveMatchLive(){
+  const q=questions[curQ],v={};let any=false;
+  q.pairs.forEach((_,i)=>{const s=document.getElementById('ms'+i);if(s&&s.value){v[i]=s.value;any=true;}});
+  if(any)answers[curQ]={type:'match',value:v,timeSpent:Math.round((Date.now()-qStart)/1000)};else delete answers[curQ];
+  updateStrip();document.getElementById('ans-count').textContent=countAns();
+}
+function saveOpenLive(){
+  const ta=document.getElementById('ota');
+  if(ta&&ta.value.trim())answers[curQ]={type:'open',value:ta.value.trim(),timeSpent:Math.round((Date.now()-qStart)/1000)};else delete answers[curQ];
+  updateStrip();document.getElementById('ans-count').textContent=countAns();
+}
+
+// ── SUBMIT ──
+function openModal(){
+  saveAnswer();
+  const an=countAns(),un=TOTAL-an;
+  document.getElementById('modal-stats').innerHTML=`
+    <div class="mstat"><span class="lbl">Beantwortet</span><span class="val">${an} / ${TOTAL}</span></div>
+    <div class="mstat"><span class="lbl">Offen</span><span class="val${un>0?' bad':''}">${un}</span></div>
+    <div class="mstat"><span class="lbl">Markiert (⚑)</span><span class="val">${flags.size}</span></div>
+    <div class="mstat"><span class="lbl">Zeit</span><span class="val">${document.getElementById('tb-timer').textContent}</span></div>`;
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal(){document.getElementById('modal').classList.remove('open')}
+function fmtAns(q,a){
+  if(!a)return null;
+  if(a.type==='single')return q.opts[a.value];
+  if(a.type==='multi')return a.value.map(i=>q.opts[i]);
+  if(a.type==='match')return Object.entries(a.value).map(([i,v])=>({term:q.pairs[+i].term,chosen:v}));
+  return a.value;
+}
+function submitExam(){
+  clearInterval(timerID);
+  const totalSec=Math.round((Date.now()-examStart)/1000);
+  const yr=getYear(student.klasse),mix=LEVEL_MIX[yr]||LEVEL_MIX['9'];
+  const payload={
+    meta:{version:'1.2',tool:'WPU-3DDruck-Lernkontrolle',timestamp:new Date().toISOString(),totalTimeSeconds:totalSec},
+    student:student,
+    levelMix:mix,
+    exam:{
+      totalQuestions:TOTAL,answeredQuestions:countAns(),flaggedQuestions:[...flags],
+      questions:questions.map((q,i)=>({
+        index:i+1,material:q.mat,category:q.cat,level:q.level,type:q.type,
+        questionText:q.q,
+        correctAnswer:q.type==='open'?null:q.type==='single'?q.opts[q.correct]:q.type==='multi'?q.correct.map(c=>q.opts[c]):q.pairs.map(p=>({term:p.term,correct:p.answer})),
+        studentAnswer:answers[i]?fmtAns(q,answers[i]):null,
+        timeSpentSeconds:answers[i]?answers[i].timeSpent:null,
+        sampleAnswer:q.type==='open'?q.sampleAnswer:null,
+      }))
+    }
+  };
+  const fn=`lk_3ddruck_${student.nachname.toLowerCase()}_${student.vorname.toLowerCase()}_${student.klasse}_${new Date().toISOString().slice(0,10)}.json`;
+  const b=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=fn;a.click();URL.revokeObjectURL(u);
+  closeModal();
+  setScreen('screen-done');
+  document.getElementById('done-file').textContent=fn;
+}
+
+// ══════════════════════════════════════════════════
+// EDITOR
+// ══════════════════════════════════════════════════
+function openEditorLogin(){setScreen('screen-ed-login')}
+function goBackToLogin(){
+  document.getElementById('ed-pw-inp').value='';
+  document.getElementById('ed-pw-err').style.display='none';
+  setScreen('screen-login');
+}
+function checkEditorPw(){
+  const pw=document.getElementById('ed-pw-inp').value;
+  if(pw===EDITOR_PASSWORD){
+    document.getElementById('ed-pw-err').style.display='none';
+    setScreen('screen-editor');
+    renderEditor();
+  } else {
+    document.getElementById('ed-pw-err').style.display='block';
+    document.getElementById('ed-pw-inp').value='';
+    document.getElementById('ed-pw-inp').focus();
+  }
+}
+
+let edFilter={mat:'',level:'',type:''};
+
+function renderEditor(){
+  // filters
+  const mats=['Alle','PLA','PETG','ABS/ASA','PC','PET','TPU'];
+  const levels=['Alle','easy','medium','hard'];
+  const types=['Alle','single','multi','match','open'];
+  const levelLabel={easy:'Leicht',medium:'Mittel',hard:'Schwer'};
+  let fhtml=``;
+  mats.forEach(m=>fhtml+=`<button class="ed-filter-btn${edFilter.mat===(m==='Alle'?'':m)?' active':''}" onclick="setEdFilter('mat','${m==='Alle'?'':m}')">${m}</button>`);
+  fhtml+=`<span style="color:var(--border2);margin:0 4px">|</span>`;
+  levels.forEach(l=>fhtml+=`<button class="ed-filter-btn${edFilter.level===(l==='Alle'?'':l)?' active':''}" onclick="setEdFilter('level','${l==='Alle'?'':l}')">${l==='Alle'?'Alle Niveaus':levelLabel[l]||l}</button>`);
+  fhtml+=`<span style="color:var(--border2);margin:0 4px">|</span>`;
+  types.forEach(t=>fhtml+=`<button class="ed-filter-btn${edFilter.type===(t==='Alle'?'':t)?' active':''}" onclick="setEdFilter('type','${t==='Alle'?'':t}')">${t==='Alle'?'Alle Typen':{single:'Einfach',multi:'Mehrfach',match:'Zuordnung',open:'Freitext'}[t]||t}</button>`);
+
+  const filtered=POOL.filter(q=>
+    (!edFilter.mat||q.mat===edFilter.mat)&&
+    (!edFilter.level||q.level===edFilter.level)&&
+    (!edFilter.type||q.type===edFilter.type)
+  );
+  fhtml+=`<span class="ed-count">${filtered.length} Fragen</span>`;
+  document.getElementById('ed-filters').innerHTML=fhtml;
+
+  // question list
+  const mc=MAT;
+  let qhtml='';
+  filtered.forEach((q,fi)=>{
+    const realIdx=POOL.indexOf(q);
+    const ms=mc[q.mat]||{c:'#aaa',bg:'rgba(170,170,170,.1)',bd:'rgba(170,170,170,.25)'};
+    qhtml+=`<div class="ed-q-item" id="editem-${realIdx}">
+      <div class="ed-q-header" onclick="toggleEdItem(${realIdx})">
+        <span class="ed-q-num">${realIdx+1}</span>
+        <span class="ed-q-mat" style="color:${ms.c};background:${ms.bg};border:1px solid ${ms.bd}">${q.mat}</span>
+        <span class="ed-q-level level-${q.level}">${{easy:'●Leicht',medium:'●●Mittel',hard:'●●●Schwer'}[q.level]}</span>
+        <span class="ed-q-text">${q.q}</span>
+        <span class="ed-q-type">${tLabel(q.type)}</span>
+        <span class="ed-q-toggle">▼</span>
+      </div>
+      <div class="ed-q-body">${buildEdForm(q,realIdx)}</div>
+    </div>`;
+  });
+  document.getElementById('ed-q-list').innerHTML=qhtml;
+}
+
+function setEdFilter(key,val){edFilter[key]=val;renderEditor()}
+function toggleEdItem(idx){
+  const el=document.getElementById('editem-'+idx);
+  el.classList.toggle('open');
+}
+
+function buildEdForm(q,idx){
+  const mOpts=['PLA','PETG','ABS/ASA','PC','PET','TPU'].map(m=>`<option value="${m}"${q.mat===m?' selected':''}>${m}</option>`).join('');
+  const lOpts=['easy','medium','hard'].map(l=>`<option value="${l}"${q.level===l?' selected':''}>${{easy:'Leicht',medium:'Mittel',hard:'Schwer'}[l]}</option>`).join('');
+  const tOpts=['single','multi','match','open'].map(t=>`<option value="${t}"${q.type===t?' selected':''}>${tLabel(t)}</option>`).join('');
+
+  let typeFields='';
+  if(q.type==='single'||q.type==='multi'){
+    const lb='ABCDE';
+    typeFields=`<div class="ed-row"><label>Antwortoptionen</label>
+      <div class="ed-opts-list" id="ed-opts-${idx}">
+        ${q.opts.map((o,i)=>`<div class="ed-opt-row"><span class="opt-label">${lb[i]}</span><input class="ed-input" type="text" value="${o.replace(/"/g,'&quot;')}" id="ed-opt-${idx}-${i}"><button class="rm-btn" onclick="removeOpt(${idx},${i})">✕</button></div>`).join('')}
+      </div>
+      <button class="ed-add-btn" onclick="addOpt(${idx})" style="margin-top:6px">+ Option hinzufügen</button>
+    </div>`;
+    if(q.type==='single'){
+      const cOpts=q.opts.map((o,i)=>`<option value="${i}"${q.correct===i?' selected':''}>${'ABCDE'[i]}: ${o.substring(0,30)}</option>`).join('');
+      typeFields+=`<div class="ed-row"><label>Richtige Antwort</label><select class="ed-select" id="ed-correct-${idx}">${cOpts}</select></div>`;
+    }else{
+      typeFields+=`<div class="ed-row"><label>Richtige Antworten (Indizes, kommagetrennt, z.B. 0,2,3)</label><input class="ed-input" type="text" id="ed-correct-${idx}" value="${q.correct.join(',')}"></div>`;
+    }
+  }else if(q.type==='match'){
+    typeFields=`<div class="ed-row"><label>Paare (Begriff → Antwort)</label>
+      <div class="ed-pairs-list" id="ed-pairs-${idx}">
+        ${q.pairs.map((p,i)=>`<div class="ed-pair-row"><input class="ed-input" type="text" id="ed-pterm-${idx}-${i}" value="${p.term.replace(/"/g,'&quot;')}" placeholder="Begriff"><input class="ed-input" type="text" id="ed-pans-${idx}-${i}" value="${p.answer.replace(/"/g,'&quot;')}" placeholder="Antwort"><button class="rm-btn" onclick="removePair(${idx},${i})">✕</button></div>`).join('')}
+      </div>
+      <button class="ed-add-btn" onclick="addPair(${idx})" style="margin-top:6px">+ Paar hinzufügen</button>
+    </div>
+    <div class="ed-row"><label>Auswahlmöglichkeiten (kommagetrennt)</label><input class="ed-input" type="text" id="ed-choices-${idx}" value="${q.choices.join(', ')}"></div>`;
+  }else if(q.type==='open'){
+    typeFields=`<div class="ed-row"><label>Musterlösung (nur für Lehrkraft)</label><textarea class="ed-textarea" id="ed-sample-${idx}">${q.sampleAnswer||''}</textarea></div>`;
+  }
+
+  return `<div class="ed-form">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+      <div class="ed-row"><label>Material</label><select class="ed-select" id="ed-mat-${idx}">${mOpts}</select></div>
+      <div class="ed-row"><label>Niveau</label><select class="ed-select" id="ed-level-${idx}">${lOpts}</select></div>
+      <div class="ed-row"><label>Typ</label><select class="ed-select" id="ed-type-${idx}">${tOpts}</select></div>
+    </div>
+    <div class="ed-row"><label>Kategorie</label><input class="ed-input" type="text" id="ed-cat-${idx}" value="${q.cat}"></div>
+    <div class="ed-row"><label>Fragetext</label><textarea class="ed-textarea" id="ed-q-${idx}">${q.q}</textarea></div>
+    ${typeFields}
+    <div class="ed-action-row">
+      <button class="ed-save-btn" onclick="saveEdQuestion(${idx})">✓ Speichern</button>
+      <button class="ed-del-btn" onclick="deleteEdQuestion(${idx})">✕ Frage löschen</button>
+      <span class="ed-saved-msg" id="ed-saved-${idx}">✓ Gespeichert!</span>
+    </div>
+  </div>`;
+}
+
+function saveEdQuestion(idx){
+  const q=POOL[idx];
+  q.mat=document.getElementById(`ed-mat-${idx}`).value;
+  q.level=document.getElementById(`ed-level-${idx}`).value;
+  q.type=document.getElementById(`ed-type-${idx}`).value;
+  q.cat=document.getElementById(`ed-cat-${idx}`).value;
+  q.q=document.getElementById(`ed-q-${idx}`).value;
+  if(q.type==='single'||q.type==='multi'){
+    const opts=[];
+    document.querySelectorAll(`#ed-opts-${idx} .ed-input`).forEach(el=>opts.push(el.value));
+    q.opts=opts;
+    if(q.type==='single')q.correct=+document.getElementById(`ed-correct-${idx}`).value;
+    else q.correct=document.getElementById(`ed-correct-${idx}`).value.split(',').map(s=>+s.trim()).filter(n=>!isNaN(n));
+  }else if(q.type==='match'){
+    const pairs=[];
+    let i=0;
+    while(document.getElementById(`ed-pterm-${idx}-${i}`)){
+      pairs.push({term:document.getElementById(`ed-pterm-${idx}-${i}`).value,answer:document.getElementById(`ed-pans-${idx}-${i}`).value});
+      i++;
+    }
+    q.pairs=pairs;
+    q.choices=document.getElementById(`ed-choices-${idx}`).value.split(',').map(s=>s.trim()).filter(Boolean);
+  }else if(q.type==='open'){
+    q.sampleAnswer=document.getElementById(`ed-sample-${idx}`).value;
+  }
+  const msg=document.getElementById(`ed-saved-${idx}`);
+  msg.style.display='inline';setTimeout(()=>msg.style.display='none',2000);
+  // update header preview
+  const header=document.querySelector(`#editem-${idx} .ed-q-text`);
+  if(header)header.textContent=q.q;
+}
+
+function deleteEdQuestion(idx){
+  if(!confirm('Frage wirklich löschen?'))return;
+  POOL.splice(idx,1);
+  renderEditor();
+}
+
+function addOpt(idx){
+  const list=document.getElementById(`ed-opts-${idx}`);
+  const i=list.querySelectorAll('.ed-opt-row').length;
+  const div=document.createElement('div');div.className='ed-opt-row';
+  div.innerHTML=`<span class="opt-label">${'ABCDE'[i]||i}</span><input class="ed-input" type="text" id="ed-opt-${idx}-${i}" placeholder="Neue Option"><button class="rm-btn" onclick="removeOpt(${idx},${i})">✕</button>`;
+  list.appendChild(div);
+}
+function removeOpt(idx,i){
+  const el=document.getElementById(`ed-opt-${idx}-${i}`);
+  if(el)el.closest('.ed-opt-row').remove();
+}
+function addPair(idx){
+  const list=document.getElementById(`ed-pairs-${idx}`);
+  const i=list.querySelectorAll('.ed-pair-row').length;
+  const div=document.createElement('div');div.className='ed-pair-row';
+  div.innerHTML=`<input class="ed-input" type="text" id="ed-pterm-${idx}-${i}" placeholder="Begriff"><input class="ed-input" type="text" id="ed-pans-${idx}-${i}" placeholder="Antwort"><button class="rm-btn" onclick="removePair(${idx},${i})">✕</button>`;
+  list.appendChild(div);
+}
+function removePair(idx,i){
+  const el=document.getElementById(`ed-pterm-${idx}-${i}`);
+  if(el)el.closest('.ed-pair-row').remove();
+}
+function addNewQuestion(){
+  POOL.push({mat:'PLA',cat:'Neue Kategorie',level:'easy',type:'single',q:'Neue Frage',opts:['Option A','Option B','Option C','Option D'],correct:0});
+  edFilter={mat:'',level:'',type:''};
+  renderEditor();
+  // scroll to last
+  setTimeout(()=>{const items=document.querySelectorAll('.ed-q-item');const last=items[items.length-1];if(last){last.scrollIntoView({behavior:'smooth'});last.classList.add('open');}},100);
+}
+function exportPool(){
+  const json=JSON.stringify(POOL,null,2);
+  const b=new Blob([json],{type:'application/json'});
+  const u=URL.createObjectURL(b);
+  const a=document.createElement('a');a.href=u;a.download=`pool_3ddruck_${new Date().toISOString().slice(0,10)}.json`;a.click();
+  URL.revokeObjectURL(u);
+}
+</script>
+</body>
+</html>
